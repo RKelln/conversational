@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from api.elevenlabs_api import *
 
@@ -24,29 +25,22 @@ class TTSManager:
         while not self.queue.empty():
             self.processing_complete.clear()
             try:
-                print("process_queue")
                 text = await self.queue.get()
-                print("text: ", text)
-                # if self.current_process is not None:
-                #     await self.cancel_current_speech()  # Cancel any ongoing speech
                 self.current_process, self.current_task = await stream_with_process_control(generate_audio_stream(text))
-                
-                print("waiting for task")
+
                 # Wait for the streaming task to complete
                 if self.current_task:
                     await self.current_task
-                print("task done")
                 # Additionally, wait for the mpv process to exit
                 if self.current_process:
                     await self.current_process.wait()  # Ensure process finishes before proceeding
-                print("process done")
             
             except asyncio.CancelledError:
-                print("CancelledError")
+                logging.info("TTSManager:process_queue:CancelledError")
             except BrokenPipeError:
-                print("BrokenPipeError")
+                logging.info("TTSManager:process_queue:BrokenPipeError")
             except Exception as e:
-                print(f"Exception during speech generation: {e}")
+                logging.info(f"TTSManager:process_queue: Exception during speech generation: {e}")
     
         self.processing_complete.set()
         self.current_task = None
@@ -54,7 +48,6 @@ class TTSManager:
 
 
     async def cancel_current_speech(self):
-        print("cancel_current_speech")
         if self.current_process and self.current_task:
             await cancel_streaming(self.current_process, self.current_task)
             self.current_process = None

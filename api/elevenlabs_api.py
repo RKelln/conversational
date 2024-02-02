@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import time
 
@@ -18,9 +19,9 @@ async def stream_audio_chunks(mpv_process, audio_stream):
                 writer.write(chunk)  # asyncio subprocess stdin is a StreamWriter
                 await writer.drain()  # Ensure data is sent
     except BrokenPipeError:
-        print("BrokenPipeError caught: mpv_process might have been terminated.")
+        logging.info("stream_audio_chunks: BrokenPipeError caught")
     except Exception as e:
-        print(f"Error streaming audio chunk: {e}")
+        logging.info(f"stream_audio_chunks: Error streaming audio chunk: {e}")
     finally:
         writer.close()
         await writer.wait_closed()  # Properly close the writer
@@ -38,41 +39,29 @@ async def create_mpv_process():
 
 
 async def stream_with_process_control(audio_stream):
-    print("stream_with_process_control")
     mpv_process = await create_mpv_process()
-    print("mpv_process: ", mpv_process)
     # Start streaming audio chunks in a background task
     streaming_task = asyncio.create_task(stream_audio_chunks(mpv_process, audio_stream))
-    print("stream_with_process_control done")
     return mpv_process, streaming_task
 
 
 async def cancel_streaming(mpv_process, streaming_task):
-    print("cancel_streaming")
     if mpv_process:
-        print("Terminating mpv process")
         mpv_process.terminate()  # Send termination signal to the subprocess
         await mpv_process.wait()
-        print("mpv process terminated")
     if streaming_task:
         try:
-            print("Cancelling streaming task")
             # Cancel the streaming task
             streaming_task.cancel()
             await streaming_task  # Await the task to handle cancellation
-            print("Streaming task was cancelled successfully.")
         except asyncio.CancelledError:
-            print("Streaming task was cancelled successfully.")
+            logging.info("Streaming task was cancelled successfully.")
         except Exception as e:
-            print(f"Exception during streaming task cancellation: {e}")
-
-    print("mpv_process and streaming_task should be terminated/cancelled.")
+            logging.info(f"Exception during streaming task cancellation: {e}")
 
 
 async def stream_audio_async(audio_stream):
-    print("stream_audio_async")
     mpv_process, streaming_task = await stream_with_process_control(audio_stream)
-    print("stream_audio_async done")
     return mpv_process, streaming_task
 
 
