@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import string
 import threading
 
 from conversation import Conversation
@@ -9,9 +10,20 @@ from TTSManager import TTSManager
 
 from whisper_live.client import TranscriptionClient
 from elevenlabs import generate, stream
+from wtpsplit import WtP
 
+TESTING = True
+
+wtp = WtP("wtp-canine-s-1l-no-adapters")
+WTP_SENTENCE_THRESHOLD = 0.0002
+SHORT_WORDS = ["yes", "no", "ok", "okay", "sure", "what", "yeah", "hi", "hello", "bye", "thanks"]
+THINKING_WORDS = ["hmm", "uh", "um", "huh", "hmm", "hmmm", "uhh", "uhm", "uhhh", "uhmmm", "ahem"]
+NO_PUNCTUATION = str.maketrans('', '', string.punctuation)
+SILENCE_TIMEOUT = 2 # seconds
 
 async def send_text_to_LLM(text, assistant, thread):
+    if TESTING:
+        return "I am a test response"
     await add_message_to_thread(thread.id, text)
     reply = await get_answer(assistant.id, thread)
     return reply
@@ -19,13 +31,83 @@ async def send_text_to_LLM(text, assistant, thread):
 
 async def process_transcriptions(queue, assistant, thread):
     tts_manager = TTSManager()
+    waiting_for_full_sentence = False
+    last_text = ""
+    silence_timeout_task = None
+
     while True:
-        print("Waiting for transcription...")
+        print("Waiting for transcription...", queue.qsize(), waiting_for_full_sentence)
         text = await queue.get()
+        print("Received transcription: ", text)
+        if text == "" and waiting_for_full_sentence:
+            print("Silence timeout while waiting for sentence to complete")
+            text = last_text
+        else: 
+            waiting_for_full_sentence = False
+            if silence_timeout_task:
+                silence_timeout_task.cancel()
+                silence_timeout_task = None
+        
+            last_text = text
+
+            # check for full sentence
+            if not waiting_for_full_sentence and not is_full_sentence(text):
+                waiting_for_full_sentence = True
+                # in 2 seconds, if we don't get a full sentence, we'll send an empty string to the queue
+                asyncio.create_task(asyncio.sleep(SILENCE_TIMEOUT)).add_done_callback(lambda _: queue.put_nowait(""))
+                continue
+        
+        # clean up silence timeout
+        if silence_timeout_task:
+                silence_timeout_task.cancel()
+                silence_timeout_task = None
+        waiting_for_full_sentence = False
+
         print("Human: ", text)
         reply = await send_text_to_LLM(text, assistant, thread)
         print("Spirit: ", reply)
         await tts_manager.speak(reply)
+
+
+def remove_punctuation(text):
+    return text.translate(NO_PUNCTUATION)
+
+
+def is_full_sentence(text):
+    text = text.strip()
+    simple_text = remove_punctuation(text.lower())
+    word_count = len(simple_text.split())
+
+    # too short
+    if len(text) <= 1:
+        return False   
+    # doesn't end in ellipse
+    if text.endswith("..."):
+        return False
+    # thinking words only
+    if simple_text in THINKING_WORDS:
+        print(f"Thinking word: {simple_text}")
+        return False
+    
+    threshold = WTP_SENTENCE_THRESHOLD
+    if simple_text in SHORT_WORDS:
+        print(f"Short word: {simple_text}")
+        return True
+    # short sentence
+    if simple_text not in SHORT_WORDS and (len(simple_text) < 10 or word_count < 3):
+        threshold *= 1.2
+    # ends in punctuation
+    if text[-1] in [".", "!", "?"]: 
+        threshold *= 0.75
+        if word_count > 4: # ends and is long
+            threshold *= 0.5
+    # check for full sentence using WtP
+    # it doesn't handle single senences well, but we can check that last character to see if the probably
+    # of being the end of a sentence is high
+    prob = wtp.predict_proba(text)
+    print(max(prob), prob[-3:])
+    print(f"Sentence prob: {prob[-1]} ( > {threshold}) : {prob[-1] > threshold}")
+    return max(prob) > threshold
 
 
 def transcription_callback(queue, loop, text):
