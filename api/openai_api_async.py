@@ -43,6 +43,7 @@ async def get_answer(assistant_id, thread):
     )
 
     # wait for the run to complete
+    last_update = time.time()
     while True:
         runInfo = await client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
         if runInfo.completed_at:
@@ -51,8 +52,10 @@ async def get_answer(assistant_id, thread):
             #print(f"Run completed")
             print("")
             break
-        print(".", end="", flush=True)
-        time.sleep(0.5)
+        if time.time() - last_update > 0.5:
+            print(".", end="", flush=True)
+            last_update = time.time()
+        time.sleep(0.1)
     
     # Get messages from the thread
     messages = await client.beta.threads.messages.list(thread.id)
