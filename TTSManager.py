@@ -68,6 +68,16 @@ class TTSManager:
             await self.queue.get()  # Clear the queue
         await self.cancel_current_speech()
 
+class DummyTTSManager(TTSManager):
+    async def speak(self, text):
+        print("DummyTTSManager:speak:", text)
+
+    async def done(self):
+        pass
+
+    async def cancel_current_speech(self):
+        pass
+
 
 async def __test_async():
     async with TTSManager() as tts_manager:
@@ -75,11 +85,11 @@ async def __test_async():
         await asyncio.sleep(13) # wait to finish
 
         print(">>> First")
-        await tts_manager.speak("This is the first message.")
+        await tts_manager.speak("This is the first message it is cancelled.")
         await asyncio.sleep(1)  # Simulate waiting for a while
         print(">>> Second interrupt")
         # This call will cancel the previous speech and start the new one
-        await tts_manager.speak("This is the second message it is longer but still cancelled.")
+        await tts_manager.speak("This is the second message it is not cancelled.")
 
         await tts_manager.done()
 

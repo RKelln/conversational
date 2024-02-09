@@ -6,7 +6,7 @@ import threading
 from conversation import Conversation
 from api.openai_api_async import (create_assistant, create_thread, add_message_to_thread, get_answer)
 
-from TTSManager import TTSManager
+from TTSManager import TTSManager, DummyTTSManager
 
 from whisper_live.client import TranscriptionClient
 from elevenlabs import generate, stream
@@ -29,8 +29,8 @@ async def send_text_to_LLM(text, assistant, thread):
     return reply
 
 
-async def process_transcriptions(queue, assistant, thread):
-    tts_manager = TTSManager()
+async def process_transcriptions(queue, assistant, thread, tts_manager=DummyTTSManager()):
+
     waiting_for_full_sentence = False
     last_text = ""
     silence_timeout_task = None
@@ -41,6 +41,9 @@ async def process_transcriptions(queue, assistant, thread):
         print("Received transcription: ", text)
         if text == "" and waiting_for_full_sentence:
             print("Silence timeout while waiting for sentence to complete")
+            # don't process the text if it is just an ignored word
+            if is_ignored_words(simplify_text(text)):
+                continue
             text = last_text
         else: 
             waiting_for_full_sentence = False
@@ -73,9 +76,19 @@ def remove_punctuation(text):
     return text.translate(NO_PUNCTUATION)
 
 
+def is_ignored_words(text):
+    if text in THINKING_WORDS:
+        print(f"Thinking word: {simple_text}")
+        return False
+
+
+def simplify_text(text):
+    return remove_punctuation(text.strip().lower())
+
+
 def is_full_sentence(text):
     text = text.strip()
-    simple_text = remove_punctuation(text.lower())
+    simple_text = simplify_text(text)
     word_count = len(simple_text.split())
 
     # too short
@@ -85,8 +98,7 @@ def is_full_sentence(text):
     if text.endswith("..."):
         return False
     # thinking words only
-    if simple_text in THINKING_WORDS:
-        print(f"Thinking word: {simple_text}")
+    if is_ignored_words(simple_text):
         return False
     
     threshold = WTP_SENTENCE_THRESHOLD
@@ -139,20 +151,26 @@ async def main(args):
     # Start the transcription client
     # Since it runs in its own thread, it won't block the asyncio event loop
     client_thread = threading.Thread(target=start_client, args=(queue, loop), 
-                                     kwargs=vars(args)) 
+                                     kwargs={"host": args.host, "port": args.port, "model_size": args.model_size}) 
     client_thread.start()
 
     assistant = await create_assistant()
     thread = await create_thread()
-
-    await process_transcriptions(queue, assistant, thread)
+    
+    if args.no_voice:
+        tts_manager = DummyTTSManager()
+    else:
+        tts_manager = TTSManager()
+    
+    await process_transcriptions(queue, assistant, thread, tts_manager=tts_manager)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sohkepayin Live Client")
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=9090)
-    parser.add_argument("--model_size", type=str, default="small")
+    parser.add_argument("--model-size", type=str, default="small", choices=["small", "medium", "large-v2", "large-v3"])
+    parser.add_argument("--no-voice", action="store_true")
 
     args = parser.parse_args()
 
