@@ -23,6 +23,7 @@ SILENCE_TIMEOUT = 2 # seconds
 
 async def send_text_to_LLM(text, assistant, thread):
     if TESTING:
+        await asyncio.sleep(1)
         return "I am a test response"
     await add_message_to_thread(thread.id, text)
     reply = await get_answer(assistant.id, thread)
