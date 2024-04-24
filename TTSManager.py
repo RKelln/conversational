@@ -5,6 +5,7 @@ from api.elevenlabs_api import *
 
 class TTSManager:
     def __init__(self):
+        logging.info("Elevenlabs TTSManager initialized.")
         self.current_process = None
         self.current_task = None
         self.queue = asyncio.Queue()  # Queue to manage speech requests
@@ -13,6 +14,8 @@ class TTSManager:
 
 
     async def speak(self, text):
+        if text == "<no response>" or text == "":
+            return
         await self.queue.put(text)  # Add speech request to the queue
         if self.current_task is None and self.current_process is None:
             asyncio.create_task(self.process_queue())
@@ -85,7 +88,7 @@ async def __test_async():
         await asyncio.sleep(13) # wait to finish
 
         print(">>> First")
-        await tts_manager.speak("This is the first message it is cancelled.")
+        await tts_manager.speak("First message, it is cancelled and never says this part.")
         await asyncio.sleep(1)  # Simulate waiting for a while
         print(">>> Second interrupt")
         # This call will cancel the previous speech and start the new one

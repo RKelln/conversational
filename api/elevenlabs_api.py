@@ -3,13 +3,16 @@ import logging
 import os
 import time
 
-from elevenlabs import generate
+from elevenlabs import play
+from elevenlabs.client import ElevenLabs
 
 # env variables
 from dotenv import load_dotenv
 load_dotenv()
-api_key = os.getenv('ELEVENLABS_API_KEY')
 
+client = ElevenLabs(
+  api_key=os.getenv('ELEVENLABS_API_KEY')
+)
 
 async def stream_audio_chunks(mpv_process, audio_stream):
     writer = mpv_process.stdin
@@ -99,7 +102,7 @@ async def __test_async():
 def generate_audio_stream(text, test=False):
     if test:
         return mock_audio_stream_generator_with_real_audio()
-    return generate(text=text, stream=True, api_key=api_key)
+    return client.generate(text=text, stream=True, model="eleven_monolingual_v1")
 
 
 def mock_audio_stream_generator_with_real_audio(file_path="test.mp3", chunk_size=2048):

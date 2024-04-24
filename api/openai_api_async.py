@@ -11,7 +11,12 @@ my_key = os.getenv('OPENAI_API_KEY')
 # OpenAI API
 client = AsyncOpenAI(api_key=my_key)
 
-assistant_id = "asst_C4Nd0FYF84ZGpagX7xGqO6M3" #"asst_FiGxIhtqI67jvN0TM48OCxCX"
+assistant_id = "asst_wng2V9MboVLWVbpL1UIYHWr5"
+# Experimance: "asst_wng2V9MboVLWVbpL1UIYHWr5"
+
+# Sohkepayin:
+#"asst_C4Nd0FYF84ZGpagX7xGqO6M3" 
+#"asst_FiGxIhtqI67jvN0TM48OCxCX"
 
 # inspired by this post:
 # https://community.openai.com/t/cant-add-messages-to-thread-while-a-run-is-active/491669/3
