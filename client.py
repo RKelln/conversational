@@ -20,7 +20,7 @@ async def send_text_to_LLM(text, assistant, thread):
     return reply
 
 
-async def process_transcriptions(queue, assistant, thread, tts_service=DummyTTSManager()):
+async def process_transcriptions(queue, assistant, thread, tts_service=DummyTTSManager(), serial=False):
 
     while True:
         print("Waiting for transcription...", queue.qsize())
@@ -28,7 +28,14 @@ async def process_transcriptions(queue, assistant, thread, tts_service=DummyTTSM
         print("Human: ", text)
         reply = await send_text_to_LLM(text, assistant, thread)
         print("LLM: ", reply)
+        if serial:
+            # TODO: pause the transcription service while the LLM is speaking
+            pass
         await tts_service.speak(reply)
+        if serial:
+            # empty the queue to ignore anything that was said while the LLM was speaking
+            while not queue.empty():
+                queue.get_nowait()
 
 
 def transcription_callback(queue, loop, text):
@@ -90,7 +97,7 @@ async def main(args):
     assistant = await create_assistant()
     thread = await create_thread()
     
-    await process_transcriptions(queue, assistant, thread, tts_service=tts_service)
+    await process_transcriptions(queue, assistant, thread, tts_service=tts_service, serial=args.serial)
 
 
 if __name__ == "__main__":
@@ -102,7 +109,9 @@ if __name__ == "__main__":
     parser.add_argument("--testing", action="store_true")
     parser.add_argument("--stt", type=str, default="assembly", choices=["assembly", "deepgram", "whisper", "text"])
     parser.add_argument("--llm", type=str, default="openai", choices=["openai"])
-    parser.add_argument("--tts", type=str, default="elevenlabs", choices=["elevenlabs"])
+    parser.add_argument("--tts", type=str, default="elevenlabs", choices=["elevenlabs", "none"])
+    parser.add_argument("--serial", action="store_true", help="Listen or speak one at a time, not concurrently.")
+    
     args = parser.parse_args()
 
     if args.testing:
