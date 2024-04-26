@@ -30,9 +30,7 @@ class AssemblyAITranscription(TranscriptionService):
         super().__init__(transcript_callback, callbacks)
 
         self.transcriber = None
-        self.sentence = "" # for the current sentence (finalized at end of sentence)
-        self.current_transcript = "" # for the current utterance
-        self.full_transcript = "" # all utterances
+        
 
         # extract acceptable options, keep only the keys that are valid
         if options is not None:
@@ -111,13 +109,7 @@ class AssemblyAITranscription(TranscriptionService):
             return
 
         if isinstance(result, aai.RealtimeFinalTranscript):
-            self.sentence += result.text
-            self.current_transcript += self.sentence
-            self.full_transcript += self.sentence
-            if len(self.sentence) > 0:
-                self.transcript_callback(self.sentence)
-                self.sentence = ''
-                self.on_utterance_end(self.current_transcript)
+            self._message_processing(result.text)
         else:
             print(result.text, end="\r")
 

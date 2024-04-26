@@ -87,6 +87,13 @@ pip install elevenlabs
   ```
 
 
+# wtpsplit
+For sentence detection.
+https://github.com/bminixhofer/wtpsplit
+```
+wtpsplit
+```
+
 # Research
 
 - prevent output from interfering with speech-2-text

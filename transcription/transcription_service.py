@@ -7,6 +7,10 @@ class TranscriptionService:
         self.logger = logging.getLogger(__name__)
         self.transcript_callback = transcript_callback if transcript_callback is not None else print
         
+        self.sentence = "" # for the current sentence (finalized at end of sentence)
+        self.current_transcript = "" # for the current utterance
+        self.full_transcript = "" # all utterances
+
         self.callbacks = {
             "on_open": None,
             "on_message": None,
@@ -37,12 +41,24 @@ class TranscriptionService:
         return ""
     
     # current transcript (multiple sentences in single utterance), may be incomplete
-    def current_transcript(self):
-        return ""
-    
-    # full transcript (multiple utterances), may be incomplete 
-    def full_transcript(self):
-        return ""
+    @staticmethod
+    def _join_text(text, new_text, separator=" "):
+        if text == "":
+            return new_text
+        return (text + separator + new_text).strip()
+
+    def _message_processing(self, text):
+        if text == "":
+            return
+        self.sentence += text
+        if len(self.sentence) > 0:
+            self.current_transcript = self._join_text(self.current_transcript, self.sentence)
+            self.sentence = ""
+            if self.on_utterance_end(self.current_transcript): # if utterance is complete
+                self.full_transcript = self._join_text(self.full_transcript, self.current_transcript, separator="\n\n")
+                self.transcript_callback(self.current_transcript)
+                self.current_transcript = ""
+
 
     # overridable callbacks
     def on_open(self, open, **kwargs):
@@ -59,8 +75,10 @@ class TranscriptionService:
     def on_speech_started(self, speech_started, **kwargs):
         self.logger.debug(f"speech started: {speech_started}")
 
-    def on_utterance_end(self, utterance_end, **kwargs):
+    # return true if the utterance is complete
+    def on_utterance_end(self, utterance_end, **kwargs) -> bool:
         self.logger.debug(f"utternace_end: {utterance_end}")
+        return True
 
     def on_error(self, error, **kwargs):
         self.logger.debug(f"error: {error}")

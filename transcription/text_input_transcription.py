@@ -16,10 +16,7 @@ class TextInputTranscription(TranscriptionService):
         while True:
             text = input()
             if text != "":
-                self.sentence = text
-                self.current_transcript += " " + text
-                self.full_transcript += " " + text
-                self.transcript_callback(text)
+                self._message_processing(text)
 
 
     # current sentence, may be incomplete
