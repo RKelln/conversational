@@ -14,12 +14,29 @@ async def send_text_to_LLM(text, assistant, thread):
     if TESTING:
         await asyncio.sleep(1)
         return "I am a test response"
+
     await add_message_to_thread(thread.id, text)
-    reply = await get_answer(assistant.id, thread)
+    try:
+        reply = await get_answer(assistant.id, thread.id)
+    except Exception as e:
+        print("Error getting response from LLM")
+        print(e)
+        return None
     return reply
 
 
-async def process_transcriptions(queue, assistant, thread, tts_service=DummyTTSManager(), serial=False):
+def on_done_tts():
+    print("Done speaking")
+
+def on_speech_started():
+    print("Voice detected")
+
+def on_llm_start():
+    print("LLM thinking...")
+
+
+async def process_transcriptions(queue, assistant, thread, tts_service=DummyTTSManager(), serial=False,
+                                 done_tts_callback=None, start_llm_callback=None):
 
     while True:
         # get all the waiting transcriptions from the queue
@@ -40,11 +57,19 @@ async def process_transcriptions(queue, assistant, thread, tts_service=DummyTTSM
         else:
             reply = await send_text_to_LLM(text, assistant, thread)
             print("LLM: ", reply)
+            if start_llm_callback is not None:
+                start_llm_callback
             if serial:
                 # TODO: pause the transcription service while the LLM is speaking
                 pass
-            await tts_service.speak(reply)
+            if reply:
+                await tts_service.speak(reply)
 
+        # async callback to indicate done speaking
+        if done_tts_callback is not None:
+            done_tts_callback()
+
+        # mark the tasks as done
         if serial:
             for _ in range(tasks):
                 queue.task_done()
@@ -58,7 +83,10 @@ def transcription_callback(queue, loop, text):
 def get_stt(queue, loop, args):
 
     # set up callbacks for transcription service
-    callbacks = {"on_message": True} # use default callback for on_message
+    callbacks = {
+        "on_message": True,  # use default callback for on_message
+        "on_speech_started": on_speech_started,        
+        }
     if args.full_sentence:
         from sentence import is_full_sentence
         callbacks["on_utterance_end"] = is_full_sentence
@@ -123,7 +151,11 @@ async def main(args):
         assistant = await create_assistant()
         thread = await create_thread()
     
-    await process_transcriptions(queue, assistant, thread, tts_service=tts_service, serial=args.serial)
+    await process_transcriptions(queue, assistant, thread, 
+                                 tts_service=tts_service, 
+                                 serial=args.serial, 
+                                 done_tts_callback=on_done_tts,
+                                 start_llm_callback=on_llm_start)
 
 
 if __name__ == "__main__":
