@@ -1,16 +1,18 @@
 import os
-from openai import OpenAI, AsyncOpenAI
-from dotenv import load_dotenv
 import asyncio
 import time
 
+from openai import OpenAI, AsyncOpenAI
+
 # env variables
+from dotenv import load_dotenv
 load_dotenv()
 my_key = os.getenv('OPENAI_API_KEY')
 
 # OpenAI API
 client = AsyncOpenAI(api_key=my_key)
 assistant_id = os.getenv('OPENAI_ASSISTANT_ID')
+
 
 # inspired by this post:
 # https://community.openai.com/t/cant-add-messages-to-thread-while-a-run-is-active/491669/3
@@ -34,17 +36,17 @@ async def add_message_to_thread(thread_id, user_question):
     return message
 
 
-async def get_answer(assistant_id, thread):
+async def get_answer(assistant_id, thread_id):
     # run assistant
     run =  await client.beta.threads.runs.create(
-        thread_id=thread.id,
+        thread_id=thread_id,
         assistant_id=assistant_id
     )
 
     # wait for the run to complete
     last_update = time.time()
     while True:
-        runInfo = await client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+        runInfo = await client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
         if runInfo.completed_at:
             # elapsed = runInfo.completed_at - runInfo.created_at
             # elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
@@ -54,10 +56,10 @@ async def get_answer(assistant_id, thread):
         if time.time() - last_update > 0.5:
             print(".", end="", flush=True)
             last_update = time.time()
-        time.sleep(0.1)
+        await asyncio.sleep(0.2)
     
     # Get messages from the thread
-    messages = await client.beta.threads.messages.list(thread.id)
+    messages = await client.beta.threads.messages.list(thread_id)
     message_content = messages.data[0].content[0].text.value
     return message_content
 
