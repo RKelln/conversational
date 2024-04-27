@@ -7,7 +7,16 @@ from wtpsplit import WtP
 
 wtp = WtP("wtp-canine-s-1l-no-adapters")
 WTP_SENTENCE_THRESHOLD = 1.0e-5
-SHORT_WORDS = ["yes", "no", "ok", "okay", "sure", "what", "yeah", "hi", "hello", "bye", "thanks", "cool", "gotit", "gotcha", "got it"]
+SHORT_WORDS = ["yes", "yep", "yup", "ok", "okay", "sure", "yeah", 
+               "uhuh", "uh-uh", "uh uh", "uh-huh", "uh huh", "uhhuh",
+               "no", "nope", "nah", "not really", "not sure", "not really sure",
+               "hi", "hello", "good morning", "good afternoon", "good evening",
+               "bye", "goodbye", "good bye", "goodnight", "good night",
+               "thanks", "cool", "gotit", "gotcha", "got it", 
+               "great", "awesome", "alright", "alrighty", "alrighty then", 
+               "nice", "fine", "fine by me", "fine with me",
+               "what", "how", "how's that"
+               ]
 THINKING_WORDS = ["hmm", "uh", "um", "huh", "hmm", "hmmm", "uhh", "uhm", "uhhh", "uhmmm", "ahem"]
 NO_PUNCTUATION = str.maketrans('', '', string.punctuation)
 
