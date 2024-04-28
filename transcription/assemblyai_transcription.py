@@ -30,18 +30,21 @@ class AssemblyAITranscription(TranscriptionService):
         super().__init__(transcript_callback, callbacks)
 
         self.transcriber = None
-        
+        self.speech_started = False
 
         # extract acceptable options, keep only the keys that are valid
         if options is not None:
             print("Options: ", options)
             options = {k: v for k, v in options.items() if k in AssemblyAITranscription.valid_options}
 
+        # partial transcripts are disabled if no on_speech_started callback is provided
+        disable_partial_transcripts = False if "on_speech_started" in callbacks else True
+
         # options: https://www.assemblyai.com/docs/speech-to-text/streaming
         self.options = dict(    
             sample_rate=44_100,
             end_utterance_silence_threshold=500,
-            disable_partial_transcripts=True,
+            disable_partial_transcripts=disable_partial_transcripts,
         )
         if options is not None:
             self.options.update(options)
@@ -55,6 +58,8 @@ class AssemblyAITranscription(TranscriptionService):
             on_error = None
             on_open = None
             on_close = None
+            on_speech_started = None
+            on_utterance_end = None
 
             if "on_open" in self.callbacks and self.callbacks["on_open"] is not None:
                 on_open = self.on_open
@@ -63,9 +68,9 @@ class AssemblyAITranscription(TranscriptionService):
             if "on_metadata" in self.callbacks and self.callbacks["on_metadata"] is not None:
                 pass # TODO
             if "on_speech_started" in self.callbacks and self.callbacks["on_speech_started"] is not None:
-                pass # TODO
+                on_speech_started = self.on_speech_started
             if "on_utterance_end" in self.callbacks and self.callbacks["on_utterance_end"] is not None:
-                pass # TODO
+                on_utterance_end = self.on_utterance_end
             if "on_error" in self.callbacks and self.callbacks["on_error"] is not None:
                 on_error = self.on_error
             if "on_close" in self.callbacks and self.callbacks["on_close"] is not None:
@@ -108,8 +113,14 @@ class AssemblyAITranscription(TranscriptionService):
         if not result.text:
             return
 
+        if self.speech_started is False:
+            self.speech_started = True
+            if self.on_speech_started is not None:
+                self.on_speech_started()
+
         if isinstance(result, aai.RealtimeFinalTranscript):
             self._message_processing(result.text)
+            self.speech_started = False
         else:
             print(result.text, end="\r")
 
@@ -126,6 +137,6 @@ class AssemblyAITranscription(TranscriptionService):
 
 if __name__ == "__main__":
     # Create a Assembly transcription
-    test = AssemblyAITranscriptionService()
+    test = AssemblyAITranscription()
     test.start()
     test.stop()

@@ -80,16 +80,7 @@ def transcription_callback(queue, loop, text):
     loop.call_soon_threadsafe(lambda: queue.put_nowait(text))
 
 
-def get_stt(queue, loop, args):
-
-    # set up callbacks for transcription service
-    callbacks = {
-        "on_message": True,  # use default callback for on_message
-        "on_speech_started": on_speech_started,        
-        }
-    if args.full_sentence:
-        from sentence import is_full_sentence
-        callbacks["on_utterance_end"] = is_full_sentence
+def get_stt(queue, loop, args, callbacks=None):
     
     if args.stt == "assembly":
         from transcription.assemblyai_transcription import AssemblyAITranscription
@@ -135,8 +126,30 @@ async def main(args):
     queue = asyncio.Queue()
     loop = asyncio.get_running_loop()
 
+    done_tts_callback = None
+
+    # set up callbacks for transcription service
+    stt_callbacks = {
+        "on_message": True,  # use default callback for on_message
+    }
+
+    if args.video:
+        from python_mpv_jsonipc import MPV
+        mpv = MPV()
+        mpv.play(args.video)
+        def duck_sound():
+            mpv.volume = 50
+        def unduck_sound():
+            mpv.volume = 100
+        stt_callbacks["on_speech_started"] = duck_sound
+        done_tts_callback = unduck_sound
+
+    if args.full_sentence:
+        from sentence import is_full_sentence
+        stt_callbacks["on_utterance_end"] = is_full_sentence
+
     # Parse the command line arguments for online services
-    stt_service = get_stt(queue, loop, args)
+    stt_service = get_stt(queue, loop, args, callbacks=stt_callbacks)
     tts_service = get_tts(args)
 
     # Start the transcription client in its own thread
@@ -150,11 +163,13 @@ async def main(args):
     else:
         assistant = await create_assistant()
         thread = await create_thread()
-    
+
+    print("Listening for speech...")
+
     await process_transcriptions(queue, assistant, thread, 
                                  tts_service=tts_service, 
                                  serial=args.serial, 
-                                 done_tts_callback=on_done_tts,
+                                 done_tts_callback=done_tts_callback,
                                  start_llm_callback=on_llm_start)
 
 
@@ -170,6 +185,7 @@ if __name__ == "__main__":
     parser.add_argument("--tts", type=str, default="elevenlabs", choices=["elevenlabs", "none"])
     parser.add_argument("--serial", action="store_true", help="Listen or speak one at a time, not concurrently.")
     parser.add_argument("--full-sentence", action="store_true", help="Only respond to full sentences.")
+    parser.add_argument("--video", type=str, help="Video file to play")
     parser.add_argument("--verbose", "-v", action="store_true")
 
     args = parser.parse_args()

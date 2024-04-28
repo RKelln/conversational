@@ -42,7 +42,7 @@ class TranscriptionService:
     
     # current transcript (multiple sentences in single utterance), may be incomplete
     @staticmethod
-    def _join_text(text, new_text, separator=" "):
+    def _join_text(text : str, new_text : str, separator=" ") -> str:
         if text == "":
             return new_text
         return (text + separator + new_text).strip()
@@ -72,8 +72,8 @@ class TranscriptionService:
     def on_metadata(self, metadata, **kwargs):
         self.logger.debug(f"metadata: {metadata}")
 
-    def on_speech_started(self, speech_started, **kwargs):
-        self.logger.debug(f"speech started: {speech_started}")
+    def on_speech_started(self, **kwargs):
+        self.logger.debug(f"speech started")
 
     # return true if the utterance is complete
     def on_utterance_end(self, utterance_end, **kwargs) -> bool:
