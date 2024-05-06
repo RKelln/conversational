@@ -17,6 +17,7 @@ SHORT_WORDS = ["yes", "yep", "yup", "ok", "okay", "sure", "yeah",
                "nice", "fine", "fine by me", "fine with me",
                "what", "how", "how's that"
                ]
+QUESTION_WORDS = ["what", "how", "why", "where", "when", "who", "which", "is"]
 THINKING_WORDS = ["hmm", "uh", "um", "huh", "hmm", "hmmm", "uhh", "uhm", "uhhh", "uhmmm", "ahem"]
 NO_PUNCTUATION = str.maketrans('', '', string.punctuation)
 
@@ -58,10 +59,14 @@ def is_full_sentence(text):
     if simple_text not in SHORT_WORDS and (len(simple_text) < 10 or word_count < 3):
         threshold *= 10
     # ends in punctuation [disabled for now since assembly always adds punctuation]
-    # if text[-1] in [".", "!", "?"]: 
-    #     threshold *= 0.75
-    #     if word_count > 4: # ends and is long
-    #         threshold *= 0.5
+    #if text[-1] in [".", "!", "?"]: 
+    if text[-1] == "?": # allow for questions for better conversation
+        threshold *= 0.5
+        if word_count > 4: # ends and is long
+            threshold *= 0.2
+        # starts with question word or short word
+        if simple_text.split()[0] in QUESTION_WORDS + SHORT_WORDS:
+            threshold *= 0.1
     # check for full sentence using WtP
     # use the simple text version to ignore bad punctionation from transcriber
     prob = wtp.predict_proba(simple_text)
@@ -79,4 +84,6 @@ if __name__ == "__main__":
     print("Hello, how are you", is_full_sentence("Hello, how are you"))
     print("Hello, how are", is_full_sentence("Hello, how are"))
     print("Hello, how are.", is_full_sentence("Hello, how are."))
+    print("So what is this thing?", is_full_sentence("So what is this thing?"))
+    print("What do you think of this?", is_full_sentence("What do you think of this?"))
           
