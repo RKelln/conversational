@@ -24,6 +24,14 @@ The code is ugly and barely functional and subject to large breaking changes. I'
 
 # Run
 
+## IMPORTANT
+
+Without very good (hardware) echo cancellation on your mic it will hear the text-to-speech output, making `client.py` pretty useless (for now). I've made a `conversational.py` that uses Assembly, OpenAI, and Elevenlabs and only listens when it is not thinking/speaking.
+
+```
+python conversational.py --full-sentences
+```
+
 ## With online services
 Run client with online services:
 (defaults: assembly.ai for speech-to-text (STT), OpenAI for LLM, elevenlabs for text-to-speech (TTS))

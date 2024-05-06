@@ -134,7 +134,7 @@ def process(args, on_voice_detected=None, on_idle=None):
 
         if speech_started is False:
             speech_started = True
-            print("Voice detected")
+            #print("Voice detected")
             if on_voice_detected:
                 on_voice_detected()
 
