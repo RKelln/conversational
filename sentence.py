@@ -1,3 +1,4 @@
+import re
 import string
 import logging
 
@@ -7,10 +8,10 @@ from wtpsplit import WtP
 
 wtp = WtP("wtp-canine-s-1l-no-adapters")
 WTP_SENTENCE_THRESHOLD = 1.0e-5
-SHORT_WORDS = ["yes", "yep", "yup", "ok", "okay", "sure", "yeah", 
+SHORT_WORDS = ["yes", "yep", "yup", "ok", "okay", "sure", "yeah", "oh yeah", 
                "uhuh", "uh-uh", "uh uh", "uh-huh", "uh huh", "uhhuh",
                "no", "nope", "nah", "not really", "not sure", "not really sure",
-               "hi", "hello", "good morning", "good afternoon", "good evening",
+               "hi", "hello", "hey", "good morning", "good afternoon", "good evening",
                "bye", "goodbye", "good bye", "goodnight", "good night",
                "thanks", "cool", "gotit", "gotcha", "got it", 
                "great", "awesome", "alright", "alrighty", "alrighty then", 
@@ -50,10 +51,19 @@ def is_full_sentence(text):
     # thinking words only
     if is_ignored_words(simple_text):
         return False
-    
+    # remove thinking words, but only full matches
+    for word in THINKING_WORDS:
+        simple_text = re.sub(r"\b" + word + r"\b", "", simple_text)
+    simple_text = simple_text.strip()
+
     threshold = WTP_SENTENCE_THRESHOLD
     if simple_text in SHORT_WORDS:
         logging.debug(f"Short word detected: {simple_text}")
+        return True
+    # first sentence is short
+    first_sentence = simplify_text(re.split("[.!?]+", text)[0])
+    if first_sentence in SHORT_WORDS:    
+        logging.debug(f"Short word detected in first sentence: {simple_text}")
         return True
     # short sentence
     if simple_text not in SHORT_WORDS and (len(simple_text) < 10 or word_count < 3):
@@ -86,4 +96,6 @@ if __name__ == "__main__":
     print("Hello, how are.", is_full_sentence("Hello, how are."))
     print("So what is this thing?", is_full_sentence("So what is this thing?"))
     print("What do you think of this?", is_full_sentence("What do you think of this?"))
+    print("Hey! What's up?", is_full_sentence("Hey! What's up?"))
+    print("Uhm, okay.", is_full_sentence("Uhm, okay."))
           
