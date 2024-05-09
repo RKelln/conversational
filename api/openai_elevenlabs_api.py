@@ -63,12 +63,17 @@ def openai_to_elevenlabs(openai_client, elevenlabs_client, thread_id, assistant_
     if text and openai_client is not None:
         send_message(openai_client, thread_id, text)
 
+    output = ""
 
     def text_iterator() -> typing.Iterator[str]:
+        nonlocal output
+
         if openai_client is None:
+            output = text
             yield text
             return
         
+        ignoring_content = False
         with openai_client.beta.threads.runs.stream(
             thread_id=thread_id,
             assistant_id=assistant_id,
@@ -79,8 +84,18 @@ def openai_to_elevenlabs(openai_client, elevenlabs_client, thread_id, assistant_
                 #     del event.data.instructions
                 # print(event)
                 if event.event == "thread.message.delta" and event.data.delta.content:
-                    print(event.data.delta.content[0].text.value, end="", flush=True)
-                    yield event.data.delta.content[0].text.value
+                    content = event.data.delta.content[0].text.value
+                    output += content
+                    print(content, end="", flush=True)
+                    if content.startswith("<"):
+                        content = ""
+                        ignoring_content = True
+                    if ">" in content:
+                        ignoring_content = False
+                    if ignoring_content:
+                        yield ""
+                    else:
+                        yield content
                 # end of stream
                 elif event.event == "thread.message.completed":
                     break
@@ -93,7 +108,7 @@ def openai_to_elevenlabs(openai_client, elevenlabs_client, thread_id, assistant_
         # don't speak the text
         for t in text_iterator():
             text += t
-        return
+        return output
 
     audio_stream = elevenlabs_client.text_to_speech.convert_realtime(
         voice_id=voice_id,
@@ -111,6 +126,8 @@ def openai_to_elevenlabs(openai_client, elevenlabs_client, thread_id, assistant_
     )
 
     stream(audio_stream)
+
+    return output
 
 
 def send_message(client, thread_id, text):
