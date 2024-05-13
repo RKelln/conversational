@@ -28,9 +28,21 @@ The code is ugly and barely functional and subject to large breaking changes. I'
 
 Without very good (hardware) echo cancellation on your mic it will hear the text-to-speech output, making `client.py` pretty useless (for now). I've made a `conversational.py` that uses Assembly, OpenAI, and Elevenlabs and only listens when it is not thinking/speaking.
 
+This supports various options for input and presence detection (webcam). Some of these may require passing the index of the microphone or webcam if you have more than one. You can see the enumerations using `--list-devices`
 ```
-python conversational.py --full-sentences
+python conversational.py --list-devices
 ```
+
+There is also support for playing a video (using mpv) during the conversation and displaying the transcription text on the video.
+
+For example the full arguments I used with the Seeed USB speaker and a webcam at a recent prototype installation was:
+```
+python3 conversational.py --video experimance.mp4 --presence-idle 20 --presence-threshold 1e9 --input-index 1 --input-channels 6 --sample-rate 16000 --webcam 2 --video-volume 0.9 --onscreen-display
+```
+
+# Old and broken:
+
+The `client.py` file is an older version that using async but handles turn taking poorly. Don't use it.
 
 ## With online services
 Run client with online services:
@@ -52,10 +64,8 @@ python client.py --host 192.168.2.196 --model "large-v3"
 
 # TODO
 
-- streaming text from LLM straight to TTS streaming to reduce lag
-- flag to stop listening wen speaking
 - detect voice while LLM speaking to stop and listen
-- litellm for LLM management
+- litellm / langchain for LLM management
 
 # Tools:
 
@@ -108,5 +118,8 @@ wtpsplit
   - Acoustic Echo Cancellation
     - https://github.com/topics/acoustic-echo-cancellation 
   - https://github.com/fjiang9/NKF-AEC
-
+- https://github.com/gkamradt/QuickAgent
+  - Deepgram + groq
+- https://github.com/deepgram-devs/deepgram-conversational-demo
+- 
 
