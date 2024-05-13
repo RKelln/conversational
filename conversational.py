@@ -19,8 +19,6 @@ TESTING = False
 class MicrophoneStream:
     MIN_FREQ = 100  # Minimum frequency to consider (Hz)
     MAX_FREQ = 3000  # Maximum frequency to consider (Hz)
-    RESPEAKER_WIDTH = 2
-    RESPEAKER_CHANNELS = 6
 
     # for respeaker details see:
     # https://wiki.seeedstudio.com/ReSpeaker-USB-Mic-Array/#extract-voice
@@ -31,6 +29,7 @@ class MicrophoneStream:
         sample_rate: int = 44_100,
         chunk_size: int = 2048,
         gain: float = 1.0,
+        channels: int = 1,
         idle_threshold: float = 0.0, # seconds of idling before idle callback
         idle_callback=None,
         energy_threshold: float = 2e6,
@@ -51,7 +50,7 @@ class MicrophoneStream:
 
         #self._chunk_size = int(self.sample_rate * 0.1)
         self._chunk_size = chunk_size
-        self._channels = self.RESPEAKER_CHANNELS
+        self._channels = channels
 
         self._stream = self._pyaudio.open(
             format=pyaudio.paInt16,
@@ -199,7 +198,13 @@ def add_text_overlay(mpv, text, wrap=50):
     # Format the wrapped text for ASS
     formatted_text = "\\N".join(wrapped_text.split('\n'))  # Use ASS newline
 
-    data = f"{{\\an5\\fs20\\bord2\\shad0\\1c&HFFFFFF&\\3c&H000000&}}{formatted_text}"
+    # Set text attributes: 
+    # font size (e.g., \\fs40)
+    # Font Boldness: Adjust the boldness using \\b1 for bold and \\b0 for normal.
+    # Font Color: Change the color using \\1c&HRRGGBB& where RR, GG, BB are the red, green, and blue color components in hexadecimal format.
+    # See: https://fileformats.fandom.com/wiki/SubStation_Alpha
+    data = f"{{\\an5\\fs28\\bord2\\shad0\\1c&HFFFFFF&\\3c&H000000&}}{formatted_text}"
+    
     # Command to add the text overlay
     try:
         mpv.osd_overlay(overlay_id, "ass-events", data)
@@ -296,7 +301,7 @@ def process(args, mpv = None, on_voice_detected=None, on_idle=None):
 
     def audio_presence_detected(energy):
         nonlocal last_presence_at, speech_started, has_presence
-        print(f"Audio presence: {energy:.0}", end="\r", flush=True)
+        #print(f"Audio presence: {energy:.0}", end="\r", flush=True)
         presence_detected()
 
         if energy > args.presence_threshold * 2.0 and speech_started is False:
@@ -310,6 +315,7 @@ def process(args, mpv = None, on_voice_detected=None, on_idle=None):
 
     microphone_stream = MicrophoneStream(input_index=args.input_index,
                                          sample_rate=args.sample_rate, 
+                                         channels=args.input_channels,
                                          idle_threshold=args.idle_threshold, 
                                          idle_callback=on_idle_wrapper,
                                          energy_callback=audio_presence_detected,
@@ -422,17 +428,20 @@ def process(args, mpv = None, on_voice_detected=None, on_idle=None):
 
         print("Human: ", text_input)
         if mpv and args.onscreen_display:
-            mpv_overlay_id = add_text_overlay(mpv, text_input)
+            mpv_overlay_id = add_text_overlay(mpv, text_input, wrap=40)
         print("LLM: ", end="")
 
         # send text to LLM and speak response (blocking)
-        output = openai_to_elevenlabs(
-            openai_client=openai_client,
-            elevenlabs_client=elevenlabs_client,
-            thread_id=thread.id, 
-            assistant_id=assistant.id, 
-            text=text_input)
-    
+        try:
+            output = openai_to_elevenlabs(
+                openai_client=openai_client,
+                elevenlabs_client=elevenlabs_client,
+                thread_id=thread.id, 
+                assistant_id=assistant.id, 
+                text=text_input)
+        except Exception as e:
+            print("Error with LLM: ", e)
+            
         if mpv and args.onscreen_display:
             remove_text_overlay(mpv, mpv_overlay_id)
 
@@ -468,6 +477,7 @@ if __name__ == "__main__":
     parser.add_argument("--input-index", type=int, default=0, help="Input index for microphone")
     parser.add_argument("--sample-rate", type=int, default=44_100, help="Sample rate for input audio")
     parser.add_argument("--input-gain", type=float, default=1.0, help="Input gain for microphone")
+    parser.add_argument("--input-channels", type=int, default=1, help="Number of input channels for microphone")
     parser.add_argument("--full-sentence", action="store_true", help="Only respond to full sentences.")
     parser.add_argument("--video", type=str, help="Video file to play")
     parser.add_argument("--idle-threshold", type=float, default=8.0, help="Seconds of no audio before calling idle callback")
