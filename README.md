@@ -1,9 +1,12 @@
-# Conversational AI
+# Abyss of Time
+## Conversational AI for robotic vacuum cleaner of the future
 
-Very early experiments with conversational AI in python. Pipeline: Speech-to-text -> text sent to LLM -> LLM text response sent to text-to-speech.
+Original conversational code by @RKelln
+Adapted for performance by @mfbergmann
 
-The code is ugly and barely functional and subject to large breaking changes. I've only started making it generic enough to make it easier to plugin new services.
+This code is very specific to its application for an installation piece, and is very messy at the moment.
 
+---
 
 # Install
 

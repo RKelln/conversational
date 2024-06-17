@@ -133,17 +133,6 @@ async def main(args):
         "on_message": True,  # use default callback for on_message
     }
 
-    if args.video:
-        from python_mpv_jsonipc import MPV
-        mpv = MPV()
-        mpv.play(args.video)
-        def duck_sound():
-            mpv.volume = 50
-        def unduck_sound():
-            mpv.volume = 100
-        stt_callbacks["on_speech_started"] = duck_sound
-        done_tts_callback = unduck_sound
-
     if args.full_sentence:
         from sentence import is_full_sentence
         stt_callbacks["on_utterance_end"] = is_full_sentence

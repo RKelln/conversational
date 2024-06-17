@@ -1,7 +1,7 @@
 annotated-types==0.6.0
 anyio==4.3.0
 appdirs==1.4.4
-apturl==0.5.2
+# apturl==0.5.2
 assemblyai==0.26.0
 asttokens==2.4.1
 autopep8==2.0.2
@@ -9,17 +9,17 @@ Babel==2.8.0
 bcrypt==3.2.0
 beautifulsoup4==4.10.0
 blinker==1.4
-Brlapi==0.8.3
+# Brlapi==0.8.3
 Brotli==1.0.9
 CacheControl==0.12.10
 cached-property==1.5.2
 certifi==2020.6.20
 chardet==4.0.0
-chrome-gnome-shell==0.0.0
+# chrome-gnome-shell==0.0.0
 click==8.0.3
 colorama==0.4.4
 coloredlogs==15.0.1
-command-not-found==0.3
+# command-not-found==0.3
 cryptography==3.4.8
 cssselect==1.1.0
 cupshelpers==1.0
@@ -178,3 +178,4 @@ xkit==0.0.0
 youtube-dl==2021.12.17
 yt-dlp==2023.10.13
 zipp==1.0.0
+irobot_edu_sdk==0.5.3
